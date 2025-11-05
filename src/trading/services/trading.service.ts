@@ -36,7 +36,7 @@ export class TradingService {
 
     return {
       absoluteChange: currentPrice - averagePrice,
-      percentageChange: ((currentPrice - averagePrice) / currentPrice) * 100
+      percentageChange: -((averagePrice - currentPrice) / averagePrice) * 100
     }
   }
 

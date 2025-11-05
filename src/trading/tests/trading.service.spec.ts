@@ -4,6 +4,8 @@ import { BinanceModule } from '../../binance/binance.module'
 import { BinanceService } from '../../binance/services/binance.service'
 import { TradingModule } from '../trading.module'
 import dayjs from 'dayjs'
+import { TradeDTO } from 'src/binance/interfaces/trade.interface'
+import { TradeMockFactory } from './mocks/trade.mocks'
 
 describe('TradingService', () => {
   let tradingService: TradingService
@@ -23,6 +25,7 @@ describe('TradingService', () => {
     const defaultStartDate = dayjs().subtract(3, 'day').toDate()
     const defaultEndDate = dayjs().subtract(1, 'day').toDate()
     const defaultSymbol = 'BTCUSDT'
+
     it('should throw error when symbol not provided', async () => {
       expect(tradingService.getMarketAnalysis(undefined, defaultStartDate, defaultEndDate)).rejects.toThrow(
         'Symbol was not provided'
@@ -49,5 +52,43 @@ describe('TradingService', () => {
         pricePercentageChange: null
       })
     })
+
+    it('should calculate price change when increase', async () => {
+      const now = Date.now()
+      binanceService.fetchRecentTrades = jest
+        .fn()
+        .mockResolvedValueOnce([
+          TradeMockFactory.getTrade({ price: 100, time: new Date(now - 1) }),
+          TradeMockFactory.getTrade({ price: 200, time: new Date(now) })
+        ])
+
+      const result = await tradingService.getMarketAnalysis(defaultSymbol, defaultStartDate, defaultEndDate)
+
+      expect(result).toEqual({
+        symbol: defaultSymbol,
+        priceAbsoluteChange: 50,
+        pricePercentageChange: 33.333333
+      })
+    })
+
+    it('should calculate price change when decrease', async () => {
+      const now = Date.now()
+      binanceService.fetchRecentTrades = jest
+        .fn()
+        .mockResolvedValueOnce([
+          TradeMockFactory.getTrade({ price: 200, time: new Date(now - 1) }),
+          TradeMockFactory.getTrade({ price: 100, time: new Date(now) })
+        ])
+
+      const result = await tradingService.getMarketAnalysis(defaultSymbol, defaultStartDate, defaultEndDate)
+
+      expect(result).toEqual({
+        symbol: defaultSymbol,
+        priceAbsoluteChange: -50,
+        pricePercentageChange: -33.333333
+      })
+    })
+
+    //More tests should be added to verify logic but not enough time to deliver that
   })
 })
