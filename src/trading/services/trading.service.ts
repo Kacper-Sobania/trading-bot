@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { BinanceService } from 'src/binance/services/binance.service'
+import { BinanceService } from '../../binance/services/binance.service'
 import { MarketAnalysis, PriceAnalysis } from '../dtos/market-analysis.dto'
-import { mean, round } from 'lodash'
-import { TradeDTO } from 'src/binance/interfaces/trade.interface'
+import { mean } from 'lodash'
+import { TradeDTO } from '../../binance/interfaces/trade.interface'
 
 @Injectable()
 export class TradingService {

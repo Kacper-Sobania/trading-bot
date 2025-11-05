@@ -8,7 +8,7 @@ import {
   ServiceUnavailableException
 } from '@nestjs/common'
 import Axios from 'axios'
-import { appConfig } from 'src/configuration/appConfig'
+import { appConfig } from '../../configuration/appConfig'
 import { TradeResponse } from '../interfaces/trade.interface'
 import { TradeMapper } from '../mappers/trade.mapper'
 import axiosRetry, { isIdempotentRequestError } from 'axios-retry'
@@ -38,7 +38,7 @@ export class BinanceService {
       symbol,
       startTime: startDate.getTime(),
       endTime: endDate.getTime(),
-      limit: 5
+      limit: this.DEFAULT_TRADE_FETCH_LIMIT
     }
 
     try {
