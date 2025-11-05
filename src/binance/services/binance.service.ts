@@ -1,9 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  RequestTimeoutException,
+  ServiceUnavailableException
+} from '@nestjs/common'
 import Axios from 'axios'
 import * as crypto from 'crypto'
 import { appConfig } from 'src/configuration/appConfig'
 import { TradeResponse } from '../interfaces/trade.interface'
 import { TradeMapper } from '../mappers/trade.mapper'
+import axiosRetry, { isIdempotentRequestError } from 'axios-retry'
 
 @Injectable()
 export class BinanceService {
@@ -27,13 +36,15 @@ export class BinanceService {
   public async fetchRecentTrades(startDate: Date, endDate: Date, symbol: string) {
     const params = {
       symbol,
+      startTime: startDate,
+      endTime: endDate,
       limit: 100
     }
 
     const signature = this.generateSignature(params)
 
     try {
-      const response = await Axios.get<TradeResponse[]>(`${this.BASE_URL}/v3/trades`, {
+      const response = await Axios.get<TradeResponse[]>(`${this.BASE_URL}/v3/aggTrades`, {
         timeout: this.DEFAULT_TIMEOUT_MS,
         headers: {
           'X-MBX-APIKEY': this.API_KEY
@@ -45,14 +56,32 @@ export class BinanceService {
       })
       return TradeMapper.fromResponsesToDTOs(response.data)
     } catch (error) {
-      this.handleFetchError()
+      this.handleFetchError(error)
+      throw new InternalServerErrorException('An unexpected error occurred')
+    }
+  }
+
+  private handleFetchError(error: any): void {
+    // Handle axios timeout error
+    if (error.code === 'ECONNABORTED') {
+      throw new RequestTimeoutException('Request to Binance API timed out')
+    }
+    // Handle errors from Binance
+    const errorCode = error.response.status
+
+    if (errorCode >= 500 || errorCode === HttpStatus.REQUEST_TIMEOUT || errorCode === HttpStatus.TOO_MANY_REQUESTS) {
+      throw new ServiceUnavailableException('Service is temporarily unavailable')
+    }
+
+    if (errorCode >= 400 && errorCode < 500) {
+      throw new BadRequestException('Invalid request to Binance')
     }
   }
 
   private generateSignature(params: Record<string, any>): string {
     const queryString = this.generateQueryString(params)
 
-    return crypto.createHmac('sha256', this.BASE_URL).update(queryString).digest('hex')
+    return crypto.createHmac('sha256', this.SECRET_KEY).update(queryString).digest('hex')
   }
 
   private generateQueryString(params: Record<string, any>): string {
@@ -61,5 +90,14 @@ export class BinanceService {
       .join('&')
   }
 
-  private
+  private configureAxiosRetry() {
+    axiosRetry(Axios, {
+      retries: this.MAX_RETRIES,
+      retryDelay: () => this.RETRY_DELAY_MS,
+      retryCondition: error =>
+        isIdempotentRequestError(error) ||
+        error.response?.status === HttpStatus.TOO_MANY_REQUESTS ||
+        error.response?.status === HttpStatus.REQUEST_TIMEOUT
+    })
+  }
 }

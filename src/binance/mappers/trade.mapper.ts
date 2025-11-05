@@ -7,13 +7,14 @@ export class TradeMapper {
 
   private static fromResponseToDTO(response: TradeResponse): TradeDTO {
     return {
-      id: response.id,
-      isBestMatch: response.isBestMatch,
-      isByuerMaker: response.isByuerMaker,
-      time: new Date(response.time),
-      price: parseFloat(response.price),
-      qty: parseFloat(response.qty),
-      quoteQty: parseFloat(response.quoteQty)
+      tradeId: response.a,
+      isBestMatch: response.M,
+      isByuerMaker: response.m,
+      time: new Date(response.T),
+      price: parseFloat(response.p),
+      quantity: parseFloat(response.q),
+      firstTradeId: response.f,
+      lastTradeId: response.l
     }
   }
 }
