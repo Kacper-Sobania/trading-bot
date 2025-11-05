@@ -10,9 +10,9 @@ export class TradingController {
   @Get('market-analysis')
   async getMarketAnalysis(
     @Query('startDate', new ParseDatePipe({ errorHttpStatusCode: HttpStatus.BAD_REQUEST })) startDate: Date,
-    @Query('endDate', new ParseDatePipe({ errorHttpStatusCode: HttpStatus.BAD_REQUEST })) endDate,
-    @Query('symbol') symbol: string
+    @Query('endDate', new ParseDatePipe({ errorHttpStatusCode: HttpStatus.BAD_REQUEST })) endDate: Date,
+    @Query('symbol') symbol: string | undefined //Not enough time to create in-place validator
   ): Promise<MarketAnalysis> {
-    return this.tradingService
+    return this.tradingService.getMarketAnalysis(symbol, startDate, endDate)
   }
 }

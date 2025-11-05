@@ -8,7 +8,6 @@ import {
   ServiceUnavailableException
 } from '@nestjs/common'
 import Axios from 'axios'
-import * as crypto from 'crypto'
 import { appConfig } from 'src/configuration/appConfig'
 import { TradeResponse } from '../interfaces/trade.interface'
 import { TradeMapper } from '../mappers/trade.mapper'
@@ -22,6 +21,7 @@ export class BinanceService {
   private readonly DEFAULT_TIMEOUT_MS: number = 3000
   private readonly RETRY_DELAY_MS: number = 500
   private readonly MAX_RETRIES: number = 3
+  private readonly DEFAULT_TRADE_FETCH_LIMIT: number = 100
 
   constructor() {
     if (!appConfig.BINANCE_API_KEY || !appConfig.BINANCE_SECRET_KEY) {
@@ -36,12 +36,10 @@ export class BinanceService {
   public async fetchRecentTrades(startDate: Date, endDate: Date, symbol: string) {
     const params = {
       symbol,
-      startTime: startDate,
-      endTime: endDate,
-      limit: 100
+      startTime: startDate.getTime(),
+      endTime: endDate.getTime(),
+      limit: 5
     }
-
-    const signature = this.generateSignature(params)
 
     try {
       const response = await Axios.get<TradeResponse[]>(`${this.BASE_URL}/v3/aggTrades`, {
@@ -50,8 +48,7 @@ export class BinanceService {
           'X-MBX-APIKEY': this.API_KEY
         },
         params: {
-          ...params,
-          signature
+          ...params
         }
       })
       return TradeMapper.fromResponsesToDTOs(response.data)
@@ -76,18 +73,6 @@ export class BinanceService {
     if (errorCode >= 400 && errorCode < 500) {
       throw new BadRequestException('Invalid request to Binance')
     }
-  }
-
-  private generateSignature(params: Record<string, any>): string {
-    const queryString = this.generateQueryString(params)
-
-    return crypto.createHmac('sha256', this.SECRET_KEY).update(queryString).digest('hex')
-  }
-
-  private generateQueryString(params: Record<string, any>): string {
-    return Object.entries(params)
-      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join('&')
   }
 
   private configureAxiosRetry() {
